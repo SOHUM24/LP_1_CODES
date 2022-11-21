@@ -1,88 +1,168 @@
+import java.util.*;
+
 public class SJF_NonPreemptive {
+    public static HashMap<Integer, Integer> PID = new HashMap<Integer, Integer>();
+    public static HashMap<Integer, Integer> AT = new HashMap<Integer, Integer>();
+    public static HashMap<Integer, Integer> BT = new HashMap<Integer, Integer>();
+    public static HashMap<Integer, Integer> WT = new HashMap<Integer, Integer>();
+    public static HashMap<Integer, Integer> CT = new HashMap<Integer, Integer>();
+    public static HashMap<Integer, Integer> TAT = new HashMap<Integer, Integer>();
 
-    public static void calculate(int at[], int bt[], int wt[], int ct[], int tat[]) {
+    // ready queue which will hold all the process which need to be executed;
 
-        // inital first value of process
-        wt[0] = 0;
+    public static ArrayList<Integer> ReadyQueue = new ArrayList<Integer>();
 
-        if (at[0] > 0) {
-            ct[0] = bt[0] + at[0];
-        } else {
-            ct[0] = bt[0];
-        }
-        tat[0] = bt[0];
-        for (int i = 1; i < at.length; i++) {
-            int hold;
-            if (at[i] < ct[i - 1]) {
-                hold = ct[i - 1] - at[i];
-            } else {
-                hold = 0;
+    public static boolean AreAllProcessExecuted() {
+        int count = 0;
+        for (Map.Entry<Integer, Integer> processID : PID.entrySet()) {
+            if (processID.getValue() == 1) {
+                count++;
             }
-            ct[i] = at[i] + bt[i] + +hold;
-            tat[i] = ct[i] - at[i];
-            wt[i] = tat[i] - bt[i];
+        }
+        // we will return true if every entry is 1
+        // if every entry is 1 then all process are executed
+        // else some process are still pending
+
+        return count == PID.size();
+    }
+
+    public static void getReadyQueue(int currentTime) {
+        // we will select only those process which has arrival time less than or equal
+        // to current time
+        for (Map.Entry<Integer, Integer> ArrivalTime : AT.entrySet()) {
+            int ProcessID = ArrivalTime.getKey();
+            int ProcessArrivalTime = ArrivalTime.getValue();
+
+            if (
+            // check if arrival time of process is less than equal to current time
+            ProcessArrivalTime <= currentTime
+                    // check if current process is already executed by checking the status
+                    && PID.get(ProcessID) == -1
+                    && ReadyQueue.contains(ProcessID) == false) {
+                // add that ID in the ready queue as it is ready to be executed
+                ReadyQueue.add(ProcessID);
+            }
+
+        }
+        System.out.println("Ready Queue is - " + ReadyQueue);
+
+    }
+
+    public static int getShortestFromReadyQueue() {
+        // to make sure initial value over-rides the minprocess
+        int minProcessID = 0;
+        int minBurstTime = Integer.MAX_VALUE;
+
+        for (Integer ProcessID : ReadyQueue) {
+
+            // get the burst time of every process and compare with min Burst time
+            int BurstTime = BT.get(ProcessID);
+            // update min burst time if is less than previous burst time
+            if (BurstTime < minBurstTime) {
+                minBurstTime = BurstTime;
+                // will also need to update ID accordingly
+                minProcessID = ProcessID;
+            }
+        }
+
+        // now return the minimum process ID to execute it
+        return minProcessID;
+    }
+
+    public static int ExecuteProcess(int curentTime, int ProcessID) {
+
+        int completionTime = curentTime + BT.get(ProcessID);
+        CT.put(ProcessID, completionTime);
+
+        // now calculate TAT i.e Completion Time - Arrival Time
+        int turnAround = completionTime - AT.get(ProcessID);
+        TAT.put(ProcessID, turnAround);
+
+        // now calculate WT i.e Turn Around Time - Burst Time
+        int waiting = turnAround - BT.get(ProcessID);
+        WT.put(ProcessID, waiting);
+
+        // mark the process as completed in PID Hashtable
+        PID.put(ProcessID, 1);
+
+        // get index of process in readyqueue
+        int index = ReadyQueue.indexOf(ProcessID);
+        // remove that element from readyqueue
+        ReadyQueue.remove(index);
+        System.out.println("Process - " + ProcessID + " Executed At " + curentTime);
+        return completionTime;
+    }
+
+    public static void GanntChart() {
+        // initially our time is 0
+        int currentTime = 0;
+
+        while (AreAllProcessExecuted() == false) {
+
+            getReadyQueue(currentTime);
+
+            // this is to check if readyqueue is empty
+            // ready queue will always be empty if no process is available at particular
+            // arrival time
+            // check for this example readyqueue is empty for current = 0;
+
+            if (!ReadyQueue.isEmpty()) {
+                // now get the shortest process according to burst time
+                int ProcessID = getShortestFromReadyQueue();
+                // we got the process ID which has minimum Burst Time
+
+                // now execute this process and increment the currentTime
+                currentTime = ExecuteProcess(currentTime, ProcessID);
+
+            } else {
+                // if cpu is idle move to next unit of time
+                currentTime++;
+            }
+        }
+
+    }
+
+    public static void PrintChart() {
+
+        for (Map.Entry<Integer, Integer> entry : PID.entrySet()) {
+            System.out.println(
+                    "PID - " + entry.getKey() +
+                            " AT - " + AT.get(entry.getKey()) +
+                            " BT - " + BT.get(entry.getKey()) +
+                            " CT - " + CT.get(entry.getKey()) +
+                            " TAT - " + TAT.get(entry.getKey()) +
+                            " WT - " + WT.get(entry.getKey()));
         }
 
     }
 
     public static void main(String[] args) {
-        int pid[] = new int[] { 1, 2, 3, 4 };
-        int at[] = new int[] { 1, 2, 1, 4 };
-        int bt[] = new int[] { 3, 4, 2, 4 };
-        int ct[] = new int[5];
-        int tat[] = new int[5];
-        int wt[] = new int[5];
 
-        // sort the input according to the at
+        // PID contains ID and then status of completion
+        // if value = -1 it is in not completed;
+        // if value = 1 it is completed;
+        PID.put(1, -1);
+        PID.put(2, -1);
+        PID.put(3, -1);
+        PID.put(4, -1);
+        PID.put(5, -1);
+        // arrival time with keys pointing to our PID hashmap
+        AT.put(1, 0);
+        AT.put(2, 2);
+        AT.put(3, 4);
+        AT.put(4, 6);
+        AT.put(5, 6);
+        // Burst Time with keys pointing to our PID Hashmap
 
-        for (int i = 0; i < pid.length; i++) {
-            for (int j = i + 1; j < pid.length; j++) {
-                int temp = 0;
-                if (at[i] > at[j]) {
-                    temp = at[i];
-                    at[i] = at[j];
-                    at[j] = temp;
+        BT.put(1, 5);
+        BT.put(2, 3);
+        BT.put(3, 2);
+        BT.put(4, 4);
+        BT.put(5, 1);
 
-                    temp = bt[i];
-                    bt[i] = bt[j];
-                    bt[j] = temp;
+        // lets create a gannt chart to keep track of progress
+        GanntChart();
 
-                    temp = pid[i];
-                    pid[i] = pid[j];
-                    pid[j] = temp;
-                }
-
-            }
-        }
-
-        // sort the input according to bt
-
-        for (int i = 0; i < pid.length; i++) {
-            for (int j = i + 1; j < pid.length; j++) {
-                int temp = 0;
-                if (bt[i] > bt[j]) {
-                    temp = at[i];
-                    at[i] = at[j];
-                    at[j] = temp;
-
-                    temp = bt[i];
-                    bt[i] = bt[j];
-                    bt[j] = temp;
-
-                    temp = pid[i];
-                    pid[i] = pid[j];
-                    pid[j] = temp;
-                }
-
-            }
-        }
-
-        calculate(at, bt, wt, ct, tat);
-
-        for (int i = 0; i < at.length; i++) {
-            System.out.println(
-                    " PID - " + pid[i] + " AT - " + at[i] + " BT - " + bt[i] + " WT - " + wt[i] + " TAT - " + tat[i]
-                            + " CT - " + ct[i]);
-        }
+        PrintChart();
     }
 }
